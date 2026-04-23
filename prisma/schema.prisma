@@ -11,5 +11,194 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
+
+enum UserRole {
+  consumer
+  restaurant_owner
+  shelter_manager
+  driver
+}
+
+enum ItemStatus {
+  fresh
+  discounted
+  free
+  compost
+}
+
+enum RouteStatus {
+  idle
+  in_transit
+  completed
+}
+
+enum StopType {
+  pickup
+  delivery
+}
+
+model User {
+  id Int @id @default(autoincrement())
+  email String @unique
+  role UserRole @default(consumer)
+
+  profile Profile?
+  allergyProfile AllergyProfile?
+  managedResto Restaurant?
+  managedShelter Shelter?
+  driverRoutes Route[]
+  bids AuctionBid[]
+
+  passwordHash String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("users")
+}
+
+model Profile {
+  id Int @id @default(autoincrement())
+  name String
+  phone String
+  userId Int @unique
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("profiles")
+}
+
+model AllergyProfile {
+  id Int @id @default(autoincrement())
+  userId Int @unique
+  user User @relation(fields: [userId], references: [id])
+
+  allergens String[]
+  severity Int @default(5)
+
+  @@map("allergy_profiles")
+}
+
+model Restaurant {
+  id Int @id @default(autoincrement())
+  name String
+  address String
+  inventory FoodItem[]
+
+  ownerId Int @unique
+  owner User @relation(fields: [ownerId], references: [id])
+
+  @@map("restaurants")
+}
+
+model Shelter {
+  id Int @id @default(autoincrement())
+  name String
+  lat Float
+  lng Float
+
+  managerId Int @unique
+  manager User @relation(fields: [managerId], references: [id])
+
+  @@map("shelters")
+}
+
+model FoodItem {
+  id Int @id @default(autoincrement())
+  name String
+  desc String?
+  ingredients String[]
+  bestPrice Decimal
+  currentPrice Decimal
+  status ItemStatus @default(fresh)
+
+  restaurantId Int
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id])
+
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+  discountWindow DateTime?
+  freeWindow DateTime?
+
+  auction FlashAuction?
+
+  @@map("food_items")
+}
+
+model Route {
+  id Int @id @default(autoincrement())
+
+  driverId Int
+  driver User @relation(fields: [driverId], references: [id])
+
+  status RouteStatus @default(idle)
+  stops RouteStop[]
+  optimizedPath Json?
+
+  createdAt DateTime @default(now())
+
+  @@map("routes")
+}
+
+model RouteStop {
+  id Int @id @default(autoincrement())
+
+  routeId Int
+  route Route @relation(fields: [routeId], references: [id])
+
+  stopType StopType
+  lat Float
+  lng Float
+  isCompleted Boolean @default(false)
+  arrivalRadious Int @default(100)
+  sequenceOrder Int
+
+  @@map("route_stops")
+}
+
+model FlashAuction {
+  id Int @id @default(autoincrement())
+
+  foodItemId Int @unique
+  foodItem FoodItem @relation(fields: [foodItemId], references: [id])
+
+  startTime DateTime
+  endTime DateTime
+  minBid Decimal
+  bids AuctionBid[]
+
+  @@map("flash_auction")
+}
+
+model AuctionBid {
+  id Int @id @default(autoincrement())
+
+  auctionId Int
+  auction FlashAuction @relation(fields: [auctionId], references: [id])
+
+  bidderId Int
+  bidder User @relation(fields: [bidderId], references: [id])
+
+  amount Decimal
+  createdAt DateTime @default(now())
+
+  @@map("auction_bids")
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
