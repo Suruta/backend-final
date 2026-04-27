@@ -44,6 +44,26 @@ const getUserById = async (req, res) => {
 	}
 };
 
+const modifyUser = async (req, res) => {
+	try {
+	const userId = parseInt(req.params.id);
+	const { email, role } = req.body;
+
+	const user = await prisme.user.update({
+		where: { id: userId},
+		data: {
+			email,
+			role
+		}
+	});
+
+	res.json(user);
+	} catch (error) {
+		console.error(error);
+		res.status(500).json({ msg: 'Failed to update user'})
+	}
+};
+
 const registerUser = async (req, res) => {
 	try {
 		const {email, password, role} = req.body;
@@ -123,6 +143,7 @@ const loginUser = async (req, res) => {
 module.exports = {
 	getUsers,
 	getUsersById,
+	modifyUser,
 	registerUser,
 	loginUser
 };
