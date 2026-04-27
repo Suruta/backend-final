@@ -1,12 +1,13 @@
 const { Router } = require('express');
-const { getUsers, getUserById, registerUser, loginUser, modifyUser } = require('../controllers/user.controller');
+const { getUsers, getUserById, registerUser, loginUser, modifyUser, deleteUser } = require('../controllers/user.controller');
 const { requireAuth, requireRole } = require('../middleware/auth');
 
 const routes = Router();
 
 routes.route('/').get(getUsers);
 routes.route('/:id').get(requireAuth, getUserById);
-routes.route('/:id').put(modifyUser);
+routes.route('/:id').put(requireAuth, modifyUser);
+routes.route('/:id').delete(requireAuth, requireRole('restaurant_owner', 'shelter_manager'), deleteUser);
 routes.route('/auth/register').post(registerUser);
 routes.route('/auth/login').post(loginUser);
 

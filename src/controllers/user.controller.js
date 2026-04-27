@@ -46,21 +46,44 @@ const getUserById = async (req, res) => {
 
 const modifyUser = async (req, res) => {
 	try {
-	const userId = parseInt(req.params.id);
-	const { email, role } = req.body;
+		const targetUserId = parseInt(req.params.id);
+		const currUserId = req.user.sub;
+		const currUserRole = req.user.role;
 
-	const user = await prisme.user.update({
-		where: { id: userId},
-		data: {
-			email,
-			role
+		if (targetUserId !== currUserId && currUserRole !== 'restaurant_owner') {
+			return res.status(403).json({ msg: 'You can only update your own profile' });
 		}
-	});
 
-	res.json(user);
+		const userId = parseInt(req.params.id);
+		const { email, role } = req.body;
+
+		const user = await prisme.user.update({
+			where: { id: userId},
+			data: {
+				email,
+				role
+			}
+		});
+
+		res.json(user);
 	} catch (error) {
 		console.error(error);
 		res.status(500).json({ msg: 'Failed to update user'})
+	}
+};
+
+const deleteUser = async (req, res) => {
+	try {
+		const userId = parseInt(req.params.id);
+
+		await prisma.user.delete({
+			where: { id: userId}
+		});
+
+		res.status(204).send();
+	} catch (error) {
+		console.error(error);
+		res.status(500).json({ msg: 'Failed to delte user'})
 	}
 };
 
@@ -144,6 +167,7 @@ module.exports = {
 	getUsers,
 	getUsersById,
 	modifyUser,
+	deleteUser,
 	registerUser,
 	loginUser
 };
