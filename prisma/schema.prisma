@@ -39,6 +39,19 @@ enum StopType {
   delivery
 }
 
+enum AuditAction {
+  create
+  update
+  delete
+  status_change
+  bid_placed
+  bid_won
+  allergy_override
+  login
+  logout
+  route_completed
+}
+
 model User {
   id Int @id @default(autoincrement())
   email String @unique
@@ -183,6 +196,22 @@ model AuctionBid {
   createdAt DateTime @default(now())
 
   @@map("auction_bids")
+}
+
+model AuditLog {
+  id Int @id @default(autoincrement())
+
+  actorId Int
+  actor User @relation(fields: [actorId], references: [id])
+
+  entityId String
+  entity String
+  action AuditAction
+
+  before Json?
+  after Json?
+
+  createdAt DateTime @default(now())
 }
 
 
