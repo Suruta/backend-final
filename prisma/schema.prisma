@@ -52,6 +52,11 @@ enum AuditAction {
   route_completed
 }
 
+enum OrderStatus {
+  pending
+  ready
+}
+
 model User {
   id Int @id @default(autoincrement())
   email String @unique
@@ -64,6 +69,7 @@ model User {
   driverRoutes Route[]
   bids AuctionBid[]
   auditLogs AuditLog[]
+  orders Order[]
 
   passwordHash String
   createdAt DateTime @default(now())
@@ -193,10 +199,27 @@ model AuctionBid {
   bidderId Int
   bidder User @relation(fields: [bidderId], references: [id])
 
+  orderId Int?
+  order Order?
+
   amount Decimal
   createdAt DateTime @default(now())
 
   @@map("auction_bids")
+}
+
+model Order {
+  id Int @id @default(autoincrement())
+
+  customerId Int
+  customer User @relation(fields: [customerId], references: [id])
+
+  auctionBidId Int @unique
+  auctionBid AuctionBid @relation(fields: [auctionBidId], references: [id])
+
+  orderDate DateTime @default(now())
+  amount Decimal
+  status OrderStatus @default(pending)
 }
 
 model AuditLog {
@@ -205,7 +228,7 @@ model AuditLog {
   actorId Int?
   actor User? @relation(fields: [actorId], references: [id])
 
-  entityId String
+  entityId Int
   entity String
   action AuditAction
 
