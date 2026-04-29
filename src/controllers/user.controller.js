@@ -27,7 +27,7 @@ const getUserById = async (req, res) => {
 	try {
 		const userId = parseInt(req.params.id);
 		if (isNaN(userId)) {
-			return res.status(400).json({ msg: 'Invalid type of user id' });
+			return res.status(400).json({ msg: 'Invalid type of userId' });
 		}
 
 		const user = await prisma.user.findUnique({
