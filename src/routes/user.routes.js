@@ -4,11 +4,9 @@ const { requireAuth, requireRole } = require('../middleware/auth');
 
 const routes = Router();
 
-// routes.route('/').get(getUsers);
-// routes.route('/:id').get(requireAuth, getUserById);
-routes.route('/:id').put(requireAuth, modifyUser);
-routes.route('/:id').delete(requireAuth, requireRole('restaurant_owner', 'shelter_manager'), deleteUser);
-// routes.route('/auth/register').post(registerUser);
-// routes.route('/auth/login').post(loginUser);
+routes.put('/:id', requireAuth, modifyUser);
+// routes.route('/:id').put(requireAuth, modifyUser);
+routes.delete('/:id', requireAuth, requireRole('restaurant_owner', 'shelter_manager'), deleteUser);
+// routes.route('/:id').delete(requireAuth, requireRole('restaurant_owner', 'shelter_manager'), deleteUser);
 
 module.exports = routes;

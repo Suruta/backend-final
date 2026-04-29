@@ -3,7 +3,10 @@ const prisma = require('../lib/prisma');
 
 async function requireAuth(req, res, next) {
 	try {
+		// console.log(req);
+		// console.log(req.headers['authorization']);
 		const authHeader = req.headers['authorization'];
+		// console.log(authHeader);
 		if (!authHeader || !authHeader.startsWith('Bearer ')) {
 			return res.status(401).json({
 				error: 'Missing or invalid Authrization header. Format: Bearer <token>'
@@ -21,7 +24,7 @@ async function requireAuth(req, res, next) {
 			return res.status(401).json({ error: 'User no longer exists' });
 		}
 
-		req.body = {
+		req.user = {
 			sub: payload.sub,
 			email: payload.email,
 			role: payload.role,

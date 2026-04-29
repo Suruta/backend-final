@@ -2,6 +2,8 @@ const bcrypt = require('bcryptjs');
 const prisma = require('../lib/prisma');
 const { signAccessToken } = require('../lib/jwt');
 
+const SALT = 10;
+
 const registerUser = async (req, res) => {
 	try {
 		const {email, password, role} = req.body;
@@ -78,9 +80,55 @@ const loginUser = async (req, res) => {
 	}
 };
 
+const refreshToken = async (req, res) => {
+	try {
+		const { email } = req.body;
+
+		const user = await prisma.user.findUnique({
+			where: { email },
+			select: { id: true, email: true, role: true }
+		});
+
+		const accessToken = signAccessToken(user);
+
+		res.json({
+			message: 'Token refreshed',
+			accessToken,
+			user: {
+				id: user.id,
+				email: user.email,
+				role: user.role
+			}
+		});
+	} catch (error) {
+		console.error(error);
+		res.status(500).json({ msg: 'Failed to refresh token' });
+	}
+};
+
+const logoutUser = async (req, res) => {
+	try {
+		const { email } = req.body;
+
+		const user = await prisma.user.findUnique({
+			where: { email }
+		});
+		if (!user) {
+			return res.status(404).json({ msg: 'User not found' });
+		}
+
+		res.json({ msg: 'Logout successful' });
+	} catch (error) {
+		console.error(error);
+		res.status(500).json({ msg: 'Failed to logout' });
+	}
+};
+
 module.exports = {
 	registerUser,
-	loginUser
+	loginUser,
+	refreshToken,
+	logoutUser
 };
 
 

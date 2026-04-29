@@ -11,7 +11,7 @@ app.use(express.json());
 
 app.use('/api/users', userRoutes);
 app.use('/api/auth', authRoutes);
-app.use('/api/admin/users', adminRoutes);
+app.use('/api/admin', adminRoutes);
 
 app.listen(currPort, () => {
 	console.log(`Server is running on localhost:${currPort}`);
