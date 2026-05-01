@@ -67,9 +67,6 @@ const updateRestaurant = async (req, res) => {
 		}
 
 		const { name, address } = req.body;
-		if (!name || !address) {
-			return res.status(400).json({ msg: 'Name and address are required' });
-		}
 
 		const restaurant = await prisma.restaurant.update({
 			where: { id: restaurantId },
