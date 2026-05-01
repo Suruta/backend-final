@@ -2,15 +2,25 @@ const prisma = require('../lib/prisma');
 
 const getRoutes = async (req, res) => {
 	try {
-		const { status } = req.query;
+		const { id, role, status, limit } = req.query;
+		const driverId = parseInt(id);
+		const newLimit = limit ? parseInt(limit) : 10;
+
 		const where = {};
 
+		if (id && role && role === 'driver') {
+			where.driverId = { driverId };
+		}
 		if (status) {
 			where.status = { status };
 		}
 
 		const routes = await prisma.route.findMany({
-			where
+			where,
+			include: {
+				stops: true
+			},
+			take: newLimit
 		});
 
 		res.json({ count: routes.length, data: routes });
@@ -28,10 +38,13 @@ const getRouteById = async (req, res) => {
 		}
 
 		const route = await prisma.route.findUnique({
-			where: { id: routeId }
+			where: { id: routeId },
+			include: {
+				stops: { orderBy: { sequenceOrder: 'asc' } }
+			}
 		});
 		if (!route) {
-			return res.status(400).json({ msg: 'Route not found' });
+			return res.status(404).json({ msg: 'Route not found' });
 		}
 
 		res.json(route);
