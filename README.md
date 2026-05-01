@@ -1,3 +1,7 @@
+# TODO
+Fix: users and admin's logic.
+Need to add 10 entities to every table
+
 ## General commands
 Project Initialization
 ```
