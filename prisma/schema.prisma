@@ -55,6 +55,15 @@ enum AuditAction {
 enum OrderStatus {
   pending
   ready
+  cancelled
+  completed
+}
+
+enum PaymentStatus {
+  pending
+  paid
+  failed
+  refunded
 }
 
 model User {
@@ -120,6 +129,8 @@ model Shelter {
   managerId Int @unique
   manager User @relation(fields: [managerId], references: [id])
 
+  receivedOrders Order[]
+
   @@map("shelters")
 }
 
@@ -135,6 +146,8 @@ model FoodItem {
   restaurantId Int
   restaurant Restaurant @relation(fields: [restaurantId], references: [id])
 
+  orders Order[]
+
   createdAt DateTime @default(now())
   expiresAt DateTime
   discountWindow DateTime?
@@ -143,37 +156,6 @@ model FoodItem {
   auction FlashAuction?
 
   @@map("food_items")
-}
-
-model Route {
-  id Int @id @default(autoincrement())
-
-  driverId Int
-  driver User @relation(fields: [driverId], references: [id])
-
-  status RouteStatus @default(idle)
-  stops RouteStop[]
-  optimizedPath Json?
-
-  createdAt DateTime @default(now())
-
-  @@map("routes")
-}
-
-model RouteStop {
-  id Int @id @default(autoincrement())
-
-  routeId Int
-  route Route @relation(fields: [routeId], references: [id])
-
-  stopType StopType
-  lat Float
-  lng Float
-  isCompleted Boolean @default(false)
-  arrivalRadious Int @default(100)
-  sequenceOrder Int
-
-  @@map("route_stops")
 }
 
 model FlashAuction {
@@ -214,12 +196,68 @@ model Order {
   customerId Int
   customer User @relation(fields: [customerId], references: [id])
 
+  foodItemId Int?
+  foodItem FoodItem? @relation(fields: [foodItemId], references: [id])
+
   auctionBidId Int @unique
   auctionBid AuctionBid @relation(fields: [auctionBidId], references: [id])
 
-  orderDate DateTime @default(now())
+  shelterId Int?
+  shelter Shelter? @relation(fields: [shelterId], references: [id])
+
+  payment Payment?
+
   amount Decimal
   status OrderStatus @default(pending)
+  orderDate DateTime @default(now())
+
+  @@map("orders")
+}
+
+model Payment {
+  id Int @id @default(autoincrement())
+
+  orderId Int @unique
+  order Order @relation(fields: [orderId], references: [id])
+
+  amount Decimal
+  status PaymentStatus @default(pending)
+  method String?
+
+  createdAt DateTime @default(now())
+
+  @@map("payments")
+}
+
+model Route {
+  id Int @id @default(autoincrement())
+
+  driverId Int
+  driver User @relation(fields: [driverId], references: [id])
+
+  status RouteStatus @default(idle)
+  stops RouteStop[]
+  optimizedPath Json?
+
+  createdAt DateTime @default(now())
+
+  @@map("routes")
+}
+
+model RouteStop {
+  id Int @id @default(autoincrement())
+
+  routeId Int
+  route Route @relation(fields: [routeId], references: [id])
+
+  stopType StopType
+  lat Float
+  lng Float
+  isCompleted Boolean @default(false)
+  arrivalRadious Int @default(100)
+  sequenceOrder Int
+
+  @@map("route_stops")
 }
 
 model AuditLog {
@@ -258,3 +296,4 @@ model AuditLog {
 
 
 
+// Suruta
