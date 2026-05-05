@@ -1,5 +1,7 @@
 const prisma = require('../lib/prisma');
 
+const createRoute = async (req, res) => {};
+
 const getRoutes = async (req, res) => {
 	try {
 		const { id, role, status, limit } = req.query;

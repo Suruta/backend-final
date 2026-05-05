@@ -84,11 +84,100 @@ const deleteUser = async (req, res) => {
 	}
 };
 
+const getUserProfile = async (req, res) => {
+	try {
+		const myId = req.user.sub;
+
+		const profile = await prisma.profile.findUnique({
+			where: { userId: myId }
+		});
+		if (!profile) {
+			return res.status(400).json({ msg: 'First, create a profile' });
+		}
+
+		res.json(profile);
+	} catch (error) {
+		console.error(error);
+		res.status(500).json({ msg: 'Failed to fetch user profile' });
+	}
+};
+
+const updateUserProfile = async (req, res) => {
+	try {
+		const myId = req.user.sub;
+		const { name, phone } = req.body;
+
+		const profile = await prisma.profile.update({
+			where: { userId: myId },
+			data: {
+				name,
+				phone
+			}
+		});
+
+		res.json(profile);
+	} catch (error) {
+		console.error(error);
+		res.status(500).json({ msg: 'Failed to update user profile' });
+	}
+};
+
+const getUserAllergyProfile = async (req, res) => {
+	try {
+		const myId = req.user.sub;
+
+		const allergyProfile = await prisma.allergyProfile.findUnique({
+			where: { userId: myId }
+		});
+		if (!allergyProfile) {
+			return res.status(400).json({ msg: 'First, create allergy profile' });
+		}
+
+		res.json(allergyProfile);
+	} catch (error) {
+		console.error(error);
+		res.status(500).json({ msg: 'Failed to fetch user allergy profile' });
+	}
+};
+
+const updateUserAllergyProfile = async (req, res) => {
+	try {
+		const myId = req.user.sub;
+		const { allergens, severity } = req.body;
+
+		const allergyProfile = await prisma.allergyProfile.update({
+			where: { userId: myId },
+			data: {
+				allergens,
+				severity
+			}
+		});
+
+		res.json(allergyProfile);
+	} catch (error) {
+		console.error(error);
+		res.status(500).json({ msg: 'Failed to update user allergy profile' });
+	}
+};
+
+const getConsumerBid = async (req, res) => {
+	try {
+
+	} catch (error) {
+		console.error(error);
+		res.status(500).json({ msg: 'Failed to fetch consumer bid' });
+	}
+};
+
 module.exports = {
 	getUsers,
 	getUserById,
 	modifyUser,
-	deleteUser
+	deleteUser,
+	getUserProfile,
+	updateUserProfile,
+	getUserAllergyProfile,
+	updateUserAllergyProfile
 };
 
 

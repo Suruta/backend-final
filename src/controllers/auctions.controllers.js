@@ -7,6 +7,7 @@ const getAuctions = async (req, res) => {
 		const auctions = await prisma.flashAuction.findMany({
 			where: {
 				endTime: { gt: now },
+				startTime: { lt: now },
 				bids: { some: {} }
 			}
 		});

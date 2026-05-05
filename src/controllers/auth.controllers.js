@@ -6,7 +6,7 @@ const SALT = 10;
 
 const registerUser = async (req, res) => {
 	try {
-		const {email, password, role} = req.body;
+		const {email, password, role, name, phone, allergens, severity } = req.body;
 		if (!email || !password) {
 			return res.status(400).json({ msg: 'Email, password are required' });
 		}
@@ -27,7 +27,23 @@ const registerUser = async (req, res) => {
 			data: {
 				email,
 				passwordHash,
-				role: role || 'consumer'
+				role: role || 'consumer',
+				profile: {
+					create: {
+						name,
+						phone
+					}
+				},
+				allergyProfile: {
+					create: {
+						allergens,
+						severity: parseInt(severity) || 5
+					}
+				}
+			},
+			include: {
+				profile: true,
+				allergyProfile: true
 			}
 		});
 
