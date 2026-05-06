@@ -8,6 +8,7 @@ const restaurantRoutes = require('./routes/restaurants.routes');
 const shelterRoutes = require('./routes/shelters.routes');
 const inventoryRoutes = require('./routes/inventory.routes');
 const auctionRoutes = require('./routes/auctions.routes');
+const logisticRoute = require('./routes/logistics.routes');
 
 const app = express();
 
@@ -22,6 +23,7 @@ app.use('/api/restaurants', restaurantRoutes); // done
 app.use('/api/shelters', shelterRoutes); // done
 app.use('/api/inventory', inventoryRoutes); //done
 app.use('/api/auctions', auctionRoutes); // done
+app.use('/api/logistics', logisticRoute); // done
 
 app.listen(currPort, () => {
 	console.log(`Server is running on localhost:${currPort}`);

@@ -258,7 +258,7 @@ model RouteStop {
   lat Float
   lng Float
   isCompleted Boolean @default(false)
-  arrivalRadious Int @default(100)
+  arrivalRadius Int @default(100)
   sequenceOrder Int
 
   @@map("route_stops")
