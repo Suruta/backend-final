@@ -12,13 +12,14 @@ const getRestaurants = async (req, res) => {
 };
 
 const addRestaurant = async (req, res) => {
-	const { name, address, ownerId } = req.body;
+	const ownerId = req.user.sub;
+	const { name, address } = req.body;
 	if (!name || !address || !ownerId) {
 		return res.status(400).json({ msg: 'Name and address, ownerId are required' });
 	}
 
 	let restaurant = await prisma.restaurant.findUnique({
-		where: { ownerId: parseInt(ownerId)}
+		where: { ownerId }
 	});
 	if (restaurant) {
 		return res.status(400).json({ msg: 'Owner cannot have more than 1 restaurant!' });
@@ -28,7 +29,7 @@ const addRestaurant = async (req, res) => {
 		data: {
 			name,
 			address,
-			ownerId: parseInt(ownerId)
+			ownerId
 		}
 	});
 

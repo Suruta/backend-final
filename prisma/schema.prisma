@@ -150,6 +150,8 @@ model FoodItem {
   restaurantId Int
   restaurant Restaurant @relation(fields: [restaurantId], references: [id])
 
+  availableQuantity Int?
+
   orders Order[]
 
   createdAt DateTime @default(now())
@@ -189,6 +191,8 @@ model AuctionBid {
   order Order?
 
   amount Decimal
+  quantity Int?
+  
   createdAt DateTime @default(now())
 
   @@map("auction_bids")
@@ -212,6 +216,8 @@ model Order {
   payment Payment?
 
   amount Decimal
+  quantity Int
+
   status OrderStatus @default(pending)
   orderDate DateTime @default(now())
 

@@ -1,0 +1,1457 @@
+openapi: 3.0.3
+info:
+  title: RescueBite API - Dynamic Food Waste Recovery
+  description: >
+    API for Almaty's food recovery marketplace featuring real-time price decay,
+    allergy safety validation, and TSP-lite route optimization.
+  version: 1.0.0
+servers:
+  - url: https://api.rescuebite.kz/v1
+    description: Production Server
+  - url: http://localhost:3000/v1
+    description: Local Development Server
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    # --- Generic Schemas ---
+    ErrorResponse:
+      type: object
+      properties:
+        code:
+          type: string
+          example: "INSUFFICIENT_PERMISSIONS"
+        message:
+          type: string
+          example: "User does not have access to this resource."
+        details:
+          type: object
+          nullable: true
+
+    PaginationMeta:
+      type: object
+      properties:
+        total_items:
+          type: integer
+          example: 150
+        total_pages:
+          type: integer
+          example: 15
+        current_page:
+          type: integer
+          example: 1
+        limit:
+          type: integer
+          example: 10
+
+    # --- Domain Schemas ---
+    AllergyProfile:
+      type: object
+      required: [allergens]
+      properties:
+        allergens:
+          type: array
+          items:
+            type: string
+          example: ["peanuts", "lactose", "shellfish"]
+        severity:
+          type: integer
+          minimum: 1
+          maximum: 5
+          example: 5
+
+    UserProfile:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: "Aibek Dzhaksybekov"
+        phone:
+          type: string
+          example: "+77012345678"
+        email:
+          type: string
+          format: email
+          example: "aibek@rescuebite.kz"
+        role:
+          type: string
+          enum: [consumer, restaurant_owner, shelter_manager, driver, admin]
+          example: "consumer"
+        created_at:
+          type: string
+          format: date-time
+          example: "2024-01-15T10:30:00Z"
+
+    FoodItem:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 42
+        name:
+          type: string
+          example: "Gourmet Lamb Manti (Set of 10)"
+        desc:
+          type: string
+          example: "Handmade manti with seasoned lamb filling and onion."
+        ingredients:
+          type: array
+          items:
+            type: string
+          example: ["lamb", "flour", "onion", "black pepper"]
+        status:
+          type: string
+          enum: [FRESH, DISCOUNTED, FREE, COMPOST]
+          example: "DISCOUNTED"
+        best_price:
+          type: number
+          format: float
+          example: 2500.00
+        current_price:
+          type: number
+          format: float
+          example: 1250.00
+        currency:
+          type: string
+          example: "KZT"
+        expires_at:
+          type: string
+          format: date-time
+          example: "2024-05-20T23:00:00Z"
+        discount_window:
+          type: string
+          format: date-time
+          example: "2024-05-20T18:00:00Z"
+        free_window:
+          type: string
+          format: date-time
+          example: "2024-05-20T21:00:00Z"
+        allergy_warning:
+          type: boolean
+          description: "True if item ingredients conflict with caller's allergy profile."
+          example: false
+        restaurant_id:
+          type: integer
+          example: 7
+
+    Restaurant:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 7
+        name:
+          type: string
+          example: "Navat Restaurant"
+        address:
+          type: string
+          example: "Dostyk Ave 136, Almaty"
+        lat:
+          type: number
+          example: 43.2389
+        lng:
+          type: number
+          example: 76.9456
+        owner_id:
+          type: integer
+          example: 3
+        created_at:
+          type: string
+          format: date-time
+
+    Shelter:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 2
+        name:
+          type: string
+          example: "Mercy House Almaty"
+        lat:
+          type: number
+          example: 43.2220
+        lng:
+          type: number
+          example: 76.8512
+        manager_id:
+          type: integer
+          example: 5
+
+    FlashAuction:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 11
+        food_item_id:
+          type: integer
+          example: 42
+        food_item:
+          $ref: '#/components/schemas/FoodItem'
+        start_time:
+          type: string
+          format: date-time
+          example: "2024-05-20T17:00:00Z"
+        end_time:
+          type: string
+          format: date-time
+          example: "2024-05-20T19:00:00Z"
+        min_bid:
+          type: number
+          format: float
+          example: 500.00
+        currency:
+          type: string
+          example: "KZT"
+        bid_count:
+          type: integer
+          example: 4
+
+    AuctionBid:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 99
+        auction_id:
+          type: integer
+          example: 11
+        bidder_id:
+          type: integer
+          example: 14
+        amount:
+          type: number
+          format: float
+          example: 750.00
+        currency:
+          type: string
+          example: "KZT"
+        created_at:
+          type: string
+          format: date-time
+
+    Route:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 5
+        driver_id:
+          type: integer
+          example: 8
+        status:
+          type: string
+          enum: [IDLE, IN_TRANSIT, COMPLETED]
+          example: "IN_TRANSIT"
+        optimized_path:
+          type: object
+          description: "GeoJSON LineString of the optimised route."
+          nullable: true
+        stops:
+          type: array
+          items:
+            $ref: '#/components/schemas/RouteStop'
+        created_at:
+          type: string
+          format: date-time
+
+    RouteStop:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 18
+        route_id:
+          type: integer
+          example: 5
+        stop_type:
+          type: string
+          enum: [PICKUP, DELIVERY]
+          example: "PICKUP"
+        lat:
+          type: number
+          example: 43.2389
+        lng:
+          type: number
+          example: 76.8897
+        is_completed:
+          type: boolean
+          example: false
+        arrival_radius:
+          type: integer
+          description: "Geofence radius in metres."
+          example: 100
+        sequence_order:
+          type: integer
+          example: 1
+
+    AuditLog:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 201
+        actor_id:
+          type: integer
+          nullable: true
+          example: 1
+        entity:
+          type: string
+          example: "FoodItem"
+        entity_id:
+          type: string
+          example: "42"
+        action:
+          type: string
+          enum: [CREATE, UPDATE, DELETE, STATUS_CHANGE, BID_PLACED, BID_WON, ALLERGY_OVERRIDE, LOGIN, LOGOUT, ROUTE_COMPLETED]
+          example: "STATUS_CHANGE"
+        before:
+          type: object
+          nullable: true
+          example: { "status": "FRESH" }
+        after:
+          type: object
+          nullable: true
+          example: { "status": "DISCOUNTED" }
+        ip:
+          type: string
+          example: "95.56.120.14"
+        created_at:
+          type: string
+          format: date-time
+
+  parameters:
+    PageParam:
+      name: page
+      in: query
+      description: "Page number (1-based)."
+      schema:
+        type: integer
+        default: 1
+        minimum: 1
+    LimitParam:
+      name: limit
+      in: query
+      description: "Items per page. Maximum 100."
+      schema:
+        type: integer
+        default: 10
+        minimum: 1
+        maximum: 100
+    SortParam:
+      name: sort
+      in: query
+      description: "Sort field. Prefix with '-' for descending (e.g. -created_at)."
+      schema:
+        type: string
+        example: "-created_at"
+
+  responses:
+    BadRequest:
+      description: Invalid request parameters
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+          example:
+            code: "VALIDATION_ERROR"
+            message: "bid_amount must be a positive number."
+    Unauthorized:
+      description: Authentication failed or token missing/expired
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+          example:
+            code: "UNAUTHORIZED"
+            message: "Bearer token is missing or has expired."
+    Forbidden:
+      description: Authenticated but insufficient role permissions
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+          example:
+            code: "INSUFFICIENT_PERMISSIONS"
+            message: "Only restaurant owners can perform this action."
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+          example:
+            code: "NOT_FOUND"
+            message: "FoodItem with id 42 was not found."
+    Conflict:
+      description: State conflict (e.g. auction already closed, bid already exists)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+          example:
+            code: "AUCTION_CLOSED"
+            message: "This auction has already ended."
+    Unprocessable:
+      description: Validation error (e.g. Allergy Check Failed, Geofence Violation)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+          example:
+            code: "ALLERGY_CONFLICT"
+            message: "Item contains allergens that match your severity-5 profile."
+    ServerError:
+      description: Internal Server Error
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+          example:
+            code: "INTERNAL_ERROR"
+            message: "An unexpected error occurred. Please try again later."
+
+security:
+  - BearerAuth: []
+
+tags:
+  - name: Auth
+    description: Authentication and token management
+  - name: Users
+    description: User profiles and allergy management
+  - name: Restaurants
+    description: Restaurant CRUD (restaurant_owner role)
+  - name: Shelters
+    description: Shelter CRUD (shelter_manager role)
+  - name: Inventory
+    description: Food item browsing, creation, and price decay
+  - name: Auctions
+    description: Flash auction lifecycle and bidding
+  - name: Logistics
+    description: Driver route management and geofence validation
+  - name: Admin
+    description: Admin-only platform management and audit logs
+
+paths:
+
+  # ═══════════════════════════════════════════════════════════
+  # RESOURCE: AUTH
+  # ═══════════════════════════════════════════════════════════
+
+  /auth/register:
+    post:
+      tags: [Auth]
+      summary: Register a new user account
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password, role]
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: "consumer@rescuebite.kz"
+                password:
+                  type: string
+                  minLength: 8
+                  example: "Almaty2024!"
+                role:
+                  type: string
+                  enum: [consumer, restaurant_owner, shelter_manager, driver]
+                  example: "consumer"
+                name:
+                  type: string
+                  example: "Aibek Dzhaksybekov"
+                phone:
+                  type: string
+                  example: "+77012345678"
+      responses:
+        '201':
+          description: Account created. Returns JWT token pair.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token: { type: string, example: "eyJhbGci..." }
+                  refresh_token: { type: string, example: "eyJhbGci..." }
+                  user: { $ref: '#/components/schemas/UserProfile' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Authenticate user and receive JWT
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email, example: "driver@rescuebite.kz" }
+                password: { type: string, example: "Almaty2024!" }
+      responses:
+        '200':
+          description: Login successful. Returns JWT token pair.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token: { type: string, example: "eyJhbGci..." }
+                  refresh_token: { type: string, example: "eyJhbGci..." }
+                  user: { $ref: '#/components/schemas/UserProfile' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /auth/refresh:
+    post:
+      tags: [Auth]
+      summary: Exchange a refresh token for a new access token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refresh_token]
+              properties:
+                refresh_token: { type: string, example: "eyJhbGci..." }
+      responses:
+        '200':
+          description: New access token issued.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token: { type: string, example: "eyJhbGci..." }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: Invalidate current session (token blocklist entry created)
+      responses:
+        '204':
+          description: Logged out successfully. No body.
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  # ═══════════════════════════════════════════════════════════
+  # RESOURCE: USERS
+  # ═══════════════════════════════════════════════════════════
+
+  /users/me:
+    get:
+      tags: [Users]
+      summary: Get authenticated user's full profile
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UserProfile' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+    patch:
+      tags: [Users]
+      summary: Update authenticated user's profile (name, phone)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string, example: "Aibek D." }
+                phone: { type: string, example: "+77019876543" }
+      responses:
+        '200':
+          description: Profile updated.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UserProfile' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /users/me/allergy-profile:
+    get:
+      tags: [Users]
+      summary: Get user allergy profile
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AllergyProfile' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+    put:
+      tags: [Users]
+      summary: Create or replace the user's allergy profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AllergyProfile' }
+      responses:
+        '200':
+          description: Allergy profile saved.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AllergyProfile' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  # ═══════════════════════════════════════════════════════════
+  # RESOURCE: RESTAURANTS
+  # ═══════════════════════════════════════════════════════════
+
+  /restaurants:
+    get:
+      tags: [Restaurants]
+      summary: List all registered restaurants (public)
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+        - $ref: '#/components/parameters/SortParam'
+      responses:
+        '200':
+          description: Paginated restaurant list.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/Restaurant' }
+                  meta: { $ref: '#/components/schemas/PaginationMeta' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+    post:
+      tags: [Restaurants]
+      summary: Register a new restaurant (restaurant_owner only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, address]
+              properties:
+                name: { type: string, example: "Navat Restaurant" }
+                address: { type: string, example: "Dostyk Ave 136, Almaty" }
+                lat: { type: number, example: 43.2389 }
+                lng: { type: number, example: 76.9456 }
+      responses:
+        '201':
+          description: Restaurant created.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Restaurant' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /restaurants/{id}:
+    get:
+      tags: [Restaurants]
+      summary: Get a single restaurant by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, example: 7 }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Restaurant' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+    patch:
+      tags: [Restaurants]
+      summary: Update restaurant details (owner only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, example: 7 }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string, example: "Navat Restaurant (Updated)" }
+                address: { type: string }
+                lat: { type: number }
+                lng: { type: number }
+      responses:
+        '200':
+          description: Restaurant updated.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Restaurant' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+    delete:
+      tags: [Restaurants]
+      summary: Delete a restaurant (owner or admin only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, example: 7 }
+      responses:
+        '204':
+          description: Restaurant deleted. No body.
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  # ═══════════════════════════════════════════════════════════
+  # RESOURCE: SHELTERS
+  # ═══════════════════════════════════════════════════════════
+
+  /shelters:
+    get:
+      tags: [Shelters]
+      summary: List all shelters
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+      responses:
+        '200':
+          description: Paginated shelter list.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/Shelter' }
+                  meta: { $ref: '#/components/schemas/PaginationMeta' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+    post:
+      tags: [Shelters]
+      summary: Register a new shelter (shelter_manager only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, lat, lng]
+              properties:
+                name: { type: string, example: "Mercy House Almaty" }
+                lat: { type: number, example: 43.2220 }
+                lng: { type: number, example: 76.8512 }
+      responses:
+        '201':
+          description: Shelter created.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Shelter' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /shelters/{id}:
+    get:
+      tags: [Shelters]
+      summary: Get a single shelter by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, example: 2 }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Shelter' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  # ═══════════════════════════════════════════════════════════
+  # RESOURCE: INVENTORY
+  # ═══════════════════════════════════════════════════════════
+
+  /inventory:
+    get:
+      tags: [Inventory]
+      summary: List available food items with price decay status and allergy flags
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+        - $ref: '#/components/parameters/SortParam'
+        - name: status
+          in: query
+          description: "Filter by item lifecycle status."
+          schema:
+            type: string
+            enum: [FRESH, DISCOUNTED, FREE]
+        - name: restaurant_id
+          in: query
+          description: "Filter items belonging to a specific restaurant."
+          schema:
+            type: integer
+            example: 7
+      responses:
+        '200':
+          description: Paginated list of food items.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/FoodItem' }
+                  meta: { $ref: '#/components/schemas/PaginationMeta' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+    post:
+      tags: [Inventory]
+      summary: Add a new food item to inventory (restaurant_owner only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, ingredients, best_price, expires_at]
+              properties:
+                name: { type: string, example: "Gourmet Lamb Manti (Set of 10)" }
+                desc: { type: string, example: "Handmade manti with seasoned lamb filling." }
+                ingredients:
+                  type: array
+                  items: { type: string }
+                  example: ["lamb", "flour", "onion", "black pepper"]
+                best_price: { type: number, example: 2500.00 }
+                expires_at: { type: string, format: date-time, example: "2024-05-20T23:00:00Z" }
+                discount_window: { type: string, format: date-time, example: "2024-05-20T18:00:00Z" }
+                free_window: { type: string, format: date-time, example: "2024-05-20T21:00:00Z" }
+      responses:
+        '201':
+          description: Food item created.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FoodItem' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /inventory/{id}:
+    get:
+      tags: [Inventory]
+      summary: Get a single food item with real-time price and allergy flag
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, example: 42 }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FoodItem' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+    patch:
+      tags: [Inventory]
+      summary: Update a food item's details (restaurant_owner only, pre-auction only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, example: 42 }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                desc: { type: string }
+                ingredients: { type: array, items: { type: string } }
+                expires_at: { type: string, format: date-time }
+                discount_window: { type: string, format: date-time }
+                free_window: { type: string, format: date-time }
+      responses:
+        '200':
+          description: Food item updated.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FoodItem' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+    delete:
+      tags: [Inventory]
+      summary: Remove a food item (restaurant_owner or admin; only if no active bids)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, example: 42 }
+      responses:
+        '204':
+          description: Item deleted. No body.
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  # ═══════════════════════════════════════════════════════════
+  # RESOURCE: AUCTIONS
+  # ═══════════════════════════════════════════════════════════
+
+  /auctions:
+    get:
+      tags: [Auctions]
+      summary: List active and upcoming flash auctions
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+        - $ref: '#/components/parameters/SortParam'
+        - name: status
+          in: query
+          description: "Filter by auction lifecycle phase."
+          schema:
+            type: string
+            enum: [active, upcoming, closed]
+      responses:
+        '200':
+          description: Paginated auction list.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/FlashAuction' }
+                  meta: { $ref: '#/components/schemas/PaginationMeta' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /auctions/{auctionId}:
+    get:
+      tags: [Auctions]
+      summary: Get a single auction with its current bids
+      parameters:
+        - name: auctionId
+          in: path
+          required: true
+          schema: { type: integer, example: 11 }
+      responses:
+        '200':
+          description: Auction details with bid list.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/FlashAuction'
+                  - type: object
+                    properties:
+                      bids:
+                        type: array
+                        items: { $ref: '#/components/schemas/AuctionBid' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /inventory/{id}/auction:
+    post:
+      tags: [Inventory]
+      summary: Open a Flash Auction for a food item (restaurant_owner only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, example: 42 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [start_time, end_time, min_bid]
+              properties:
+                start_time: { type: string, format: date-time, example: "2024-05-20T17:00:00Z" }
+                end_time: { type: string, format: date-time, example: "2024-05-20T19:00:00Z" }
+                min_bid: { type: number, example: 500.00 }
+      responses:
+        '201':
+          description: Auction opened successfully.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FlashAuction' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+    delete:
+      tags: [Inventory]
+      summary: Cancel an active auction (restaurant_owner only; only if no bids placed)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, example: 42 }
+      responses:
+        '204':
+          description: Auction cancelled. No body.
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /inventory/{id}/bid:
+    post:
+      tags: [Inventory]
+      summary: Place a bid in a Flash Auction (consumer only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, example: 42 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [bid_amount]
+              properties:
+                bid_amount:
+                  type: number
+                  example: 750.00
+                  description: "Must be >= auction.min_bid."
+                override_allergy_warning:
+                  type: boolean
+                  default: false
+                  description: "Set true to acknowledge allergy risk (severity 1-4 only)."
+      responses:
+        '201':
+          description: Bid placed successfully.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuctionBid' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /users/me/bids:
+    get:
+      tags: [Users]
+      summary: List authenticated consumer's bid history
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+        - $ref: '#/components/parameters/SortParam'
+      responses:
+        '200':
+          description: Paginated bid history.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/AuctionBid' }
+                  meta: { $ref: '#/components/schemas/PaginationMeta' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  # ═══════════════════════════════════════════════════════════
+  # RESOURCE: LOGISTICS
+  # ═══════════════════════════════════════════════════════════
+
+  /logistics/routes:
+    get:
+      tags: [Logistics]
+      summary: Get routes assigned to the authenticated driver (TSP-lite optimised)
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [IDLE, IN_TRANSIT, COMPLETED]
+      responses:
+        '200':
+          description: Driver routes with stop sequences.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/Route' }
+                  meta: { $ref: '#/components/schemas/PaginationMeta' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+    post:
+      tags: [Logistics]
+      summary: Create a new route with stops (admin only)
+      description: >
+        Creates a route, assigns it to a driver, accepts an unordered list of
+        stops, runs TSP-lite nearest-neighbour optimisation to set sequenceOrder
+        on each stop, and returns the fully ordered route.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [driver_id, stops]
+              properties:
+                driver_id:
+                  type: integer
+                  example: 8
+                stops:
+                  type: array
+                  minItems: 2
+                  items:
+                    type: object
+                    required: [stop_type, lat, lng]
+                    properties:
+                      stop_type:
+                        type: string
+                        enum: [PICKUP, DELIVERY]
+                        example: "PICKUP"
+                      lat:
+                        type: number
+                        example: 43.2389
+                      lng:
+                        type: number
+                        example: 76.8897
+                      arrival_radius:
+                        type: integer
+                        description: "Geofence radius in metres. Defaults to 100."
+                        example: 100
+      responses:
+        '201':
+          description: Route created with TSP-optimised stop sequence.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Route' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /logistics/routes/{routeId}:
+    get:
+      tags: [Logistics]
+      summary: Get a single route with all stops and optimised path
+      parameters:
+        - name: routeId
+          in: path
+          required: true
+          schema: { type: integer, example: 5 }
+      responses:
+        '200':
+          description: Full route detail.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Route' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /logistics/stops/{stopId}/arrive:
+    patch:
+      tags: [Logistics]
+      summary: Trigger geofence arrival check (driver only)
+      description: >
+        Validates that the driver's current GPS coordinates are within the
+        configured arrival radius (default 100 m) of the stop location.
+        On success, marks the stop as completed and advances the route status.
+      parameters:
+        - name: stopId
+          in: path
+          required: true
+          schema: { type: integer, example: 18 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [lat, lng]
+              properties:
+                lat: { type: number, example: 43.2220 }
+                lng: { type: number, example: 76.8512 }
+      responses:
+        '200':
+          description: Geofence validated. Stop marked as completed.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RouteStop' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /logistics/stops/{stopId}/report:
+    post:
+      tags: [Logistics]
+      summary: Report an issue at a stop (driver only)
+      parameters:
+        - name: stopId
+          in: path
+          required: true
+          schema: { type: integer, example: 18 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [issue_type]
+              properties:
+                issue_type:
+                  type: string
+                  enum: [DAMAGED_GOODS, NO_SHOW_CONSUMER, WRONG_ADDRESS, OTHER]
+                  example: "NO_SHOW_CONSUMER"
+                notes:
+                  type: string
+                  example: "Consumer did not answer the door after 5 minutes."
+      responses:
+        '201':
+          description: Issue reported and logged.
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  # ═══════════════════════════════════════════════════════════
+  # RESOURCE: ADMIN
+  # ═══════════════════════════════════════════════════════════
+
+  /users:
+    get:
+      tags: [Users]
+      summary: List all users (admin only)
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+        - $ref: '#/components/parameters/SortParam'
+        - name: role
+          in: query
+          schema:
+            type: string
+            enum: [consumer, restaurant_owner, shelter_manager, driver, admin]
+      responses:
+        '200':
+          description: Paginated user list.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/UserProfile' }
+                  meta: { $ref: '#/components/schemas/PaginationMeta' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /users/{userId}/ban:
+    patch:
+      tags: [Users]
+      summary: Ban or unban a user account (admin only)
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema: { type: integer, example: 14 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [banned]
+              properties:
+                banned: { type: boolean, example: true }
+                reason: { type: string, example: "Repeated allergy override fraud." }
+      responses:
+        '200':
+          description: User ban status updated.
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /admin/audit-logs:
+    get:
+      tags: [Admin]
+      summary: Query append-only audit log (admin only)
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+        - $ref: '#/components/parameters/SortParam'
+        - name: entity
+          in: query
+          description: "Filter by entity type (e.g. FoodItem, AuctionBid)."
+          schema:
+            type: string
+            example: "FoodItem"
+        - name: action
+          in: query
+          schema:
+            type: string
+            enum: [CREATE, UPDATE, DELETE, STATUS_CHANGE, BID_PLACED, BID_WON, ALLERGY_OVERRIDE, LOGIN, LOGOUT, ROUTE_COMPLETED]
+        - name: actor_id
+          in: query
+          schema:
+            type: integer
+            example: 3
+        - name: from
+          in: query
+          description: "ISO8601 start date for filtering."
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          description: "ISO8601 end date for filtering."
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Paginated audit log entries.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/AuditLog' }
+                  meta: { $ref: '#/components/schemas/PaginationMeta' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /admin/auctions/{auctionId}/override:
+    patch:
+      tags: [Admin]
+      summary: Override a disputed auction result (admin only)
+      parameters:
+        - name: auctionId
+          in: path
+          required: true
+          schema: { type: integer, example: 11 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [winning_bid_id, reason]
+              properties:
+                winning_bid_id: { type: integer, example: 99 }
+                reason: { type: string, example: "Original winner was banned before delivery." }
+      responses:
+        '200':
+          description: Auction result overridden. New winner notified.
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /admin/decay/trigger:
+    post:
+      tags: [Admin]
+      summary: Manually trigger a price decay recalculation cycle (admin only)
+      responses:
+        '200':
+          description: Decay cycle triggered. Returns count of items updated.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  updated_count: { type: integer, example: 12 }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/ServerError' }

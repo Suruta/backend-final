@@ -54,7 +54,7 @@ const modifyUser = async (req, res) => {
 		const userId = parseInt(req.params.id);
 		const { email, role } = req.body;
 
-		const user = await prisme.user.update({
+		const user = await prisma.user.update({
 			where: { id: userId},
 			data: {
 				email,
@@ -73,6 +73,12 @@ const deleteUser = async (req, res) => {
 	try {
 		const userId = parseInt(req.params.id);
 
+		await prisma.profile.delete({
+			where: { userId }
+		});
+		await prisma.allergyProfile.delete({
+			where: { userId }
+		});
 		await prisma.user.delete({
 			where: { id: userId}
 		});
@@ -80,7 +86,7 @@ const deleteUser = async (req, res) => {
 		res.status(204).send();
 	} catch (error) {
 		console.error(error);
-		res.status(500).json({ msg: 'Failed to delte user'})
+		res.status(500).json({ msg: 'Failed to delete user'})
 	}
 };
 
@@ -144,12 +150,13 @@ const updateUserAllergyProfile = async (req, res) => {
 	try {
 		const myId = req.user.sub;
 		const { allergens, severity } = req.body;
+		const mySeverity = parseInt(severity);
 
 		const allergyProfile = await prisma.allergyProfile.update({
 			where: { userId: myId },
 			data: {
 				allergens,
-				severity
+				severity: mySeverity
 			}
 		});
 
@@ -160,9 +167,24 @@ const updateUserAllergyProfile = async (req, res) => {
 	}
 };
 
-const getConsumerBid = async (req, res) => {
+const getConsumerBids = async (req, res) => {
 	try {
+		const myId = req.user.sub;
 
+		const bids = await prisma.auctionBid.findMany({
+			where: {
+				bidderId: myId
+			},
+			include: {
+				auction: true,
+				bidder: true
+			}
+		});
+		if (!bids) {
+			return res.status(400).json({ msg: 'There are no bid for this user' });
+		}
+
+		res.json({ count: bids.length, data: bids });
 	} catch (error) {
 		console.error(error);
 		res.status(500).json({ msg: 'Failed to fetch consumer bid' });
@@ -177,7 +199,8 @@ module.exports = {
 	getUserProfile,
 	updateUserProfile,
 	getUserAllergyProfile,
-	updateUserAllergyProfile
+	updateUserAllergyProfile,
+	getConsumerBids
 };
 
 
