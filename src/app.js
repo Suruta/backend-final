@@ -16,7 +16,7 @@ const currPort = process.env.PORT || 8000;
 
 app.use(express.json());
 
-app.use('/api/users', userRoutes); // todo almost done
+app.use('/api/users', userRoutes); // todo, almost done
 app.use('/api/auth', authRoutes); // todo, almost done 
 app.use('/api/admin', adminRoutes); // todo
 app.use('/api/restaurants', restaurantRoutes); // done
