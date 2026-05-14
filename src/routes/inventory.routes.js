@@ -4,9 +4,9 @@ const { getInventories, addInventory, getInventoryById, updateInventory, deleteI
 
 const routes = Router();
 
-// routes.post('/:id/auction', addAuctionFlash);
-// routes.delete('/:id/auction', deleteAuctionFlash);
-// routes.post('/:id/bid', addAuctionBid);
+routes.post('/:id/auction', addAuctionFlash);
+routes.delete('/:id/auction', deleteAuctionFlash);
+routes.post('/:id/bid', addAuctionBid);
 
 routes.get('/', getInventories);
 routes.post('/', requireAuth, requireRole('restaurant_owner'), addInventory);

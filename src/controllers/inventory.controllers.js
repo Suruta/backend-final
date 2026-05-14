@@ -129,98 +129,98 @@ const deleteInventory = async (req, res) => {
 	}
 };
 
-// const addAuctionFlash = async (req, res) => {
-// 	try {
-// 		const foodItemId = parseInt(req.params.id);
-// 		const { startTime, endTime, minBid } = req.body;
+const addAuctionFlash = async (req, res) => {
+	try {
+		const foodItemId = parseInt(req.params.id);
+		const { startTime, endTime, minBid } = req.body;
 
-// 		if (isNaN(foodItemId)) {
-// 			return res.status(400).json({ msg: 'Invalid type of id' });
-// 		}
+		if (isNaN(foodItemId)) {
+			return res.status(400).json({ msg: 'Invalid type of id' });
+		}
 
-// 		if (!foodItemId || !startTime || !endTime || !minBid) {
-// 			return res.status(400).json({ msg: 'foodItemId, startTime, endTime and minBid, bidderId are required' });
-// 		}
+		if (!foodItemId || !startTime || !endTime || !minBid) {
+			return res.status(400).json({ msg: 'foodItemId, startTime, endTime and minBid, bidderId are required' });
+		}
 
-// 		const flashAuction = await prisma.flashAuction.create({
-// 			data: {
-// 				foodItemId,
-// 				startTime: new Date(startTime),
-// 				endTime: new Date(endTime),
-// 				minBid: parseInt(minBid)
-// 			}
-// 		});
+		const flashAuction = await prisma.flashAuction.create({
+			data: {
+				foodItemId,
+				startTime: new Date(startTime),
+				endTime: new Date(endTime),
+				minBid: parseInt(minBid)
+			}
+		});
 
-// 		res.status(201).json({
-// 			message: 'Flash auction created successfully',
-// 			flashAuction
-// 		});
-// 	} catch (error) {
-// 		console.error(error);
-// 		res.status(500).json({ msg: 'Failed to add an auction' });
-// 	}
-// };
+		res.status(201).json({
+			message: 'Flash auction created successfully',
+			flashAuction
+		});
+	} catch (error) {
+		console.error(error);
+		res.status(500).json({ msg: 'Failed to add an auction' });
+	}
+};
 
-// const deleteAuctionFlash = async (req, res) => {
-// 	try {
-// 		const auctionId = parseInt(req.params.id);
-// 		if (isNaN(auctionId)) {
-// 			return res.status(400).json({ msg: 'Invalid type of id' });
-// 		}
+const deleteAuctionFlash = async (req, res) => {
+	try {
+		const auctionId = parseInt(req.params.id);
+		if (isNaN(auctionId)) {
+			return res.status(400).json({ msg: 'Invalid type of id' });
+		}
 
-// 		const flashAuction = await prisma.flashAuction.findUnique({
-// 			where: {
-// 				id: auctionId,
-// 				bids: { none }
-// 			}
-// 		});
-// 		if (!flashAuction) {
-// 			return res.status(500).json({ msg: 'There are bids or this flash auction does not exist' });
-// 		}
+		const flashAuction = await prisma.flashAuction.findUnique({
+			where: {
+				id: auctionId,
+				bids: { none }
+			}
+		});
+		if (!flashAuction) {
+			return res.status(500).json({ msg: 'There are bids or this flash auction does not exist' });
+		}
 
-// 		await prisma.flashAuction.delete({
-// 			where: { id: auctionId }
-// 		});
+		await prisma.flashAuction.delete({
+			where: { id: auctionId }
+		});
 
-// 		res.status(204).send();
-// 	} catch (error) {
-// 		console.error(error);
-// 		res.status(500).json({ msg: 'Failed to delete an auction flash' });
-// 	}
-// };
+		res.status(204).send();
+	} catch (error) {
+		console.error(error);
+		res.status(500).json({ msg: 'Failed to delete an auction flash' });
+	}
+};
 
-// const addAuctionBid = async (req, res) => {
-// 	try {
-// 		const flashAuctionId = parseInt(req.params.id);
-// 		const bidderId = req.user.sub;
-// 		const { amount, quantity } = req.body;
+const addAuctionBid = async (req, res) => {
+	try {
+		const flashAuctionId = parseInt(req.params.id);
+		const bidderId = req.user.sub;
+		const { amount, quantity } = req.body;
 
-// 		if (isNaN(flashAuctionId)) {
-// 			return res.status(400).json({ msg: 'Invalid type of id' });
-// 		}
+		if (isNaN(flashAuctionId)) {
+			return res.status(400).json({ msg: 'Invalid type of id' });
+		}
 
-// 		if (!flashAuctionId || !amount) {
-// 			return res.status(400).json({ msg: 'AuctionId and amount are required' });
-// 		}
+		if (!flashAuctionId || !amount) {
+			return res.status(400).json({ msg: 'AuctionId and amount are required' });
+		}
 
-// 		const auctionBid = await prisma.auctionBid.create({
-// 			data: {
-// 				auctionId: flashAuctionId,
-// 				bidderId: parseInt(bidderId),
-// 				amount: parseFloat(amount),
-// 				quantity: parseInt(quantity)
-// 			}
-// 		});
+		const auctionBid = await prisma.auctionBid.create({
+			data: {
+				auctionId: flashAuctionId,
+				bidderId: parseInt(bidderId),
+				amount: parseFloat(amount),
+				quantity: parseInt(quantity)
+			}
+		});
 
-// 		res.status(201).json({
-// 			message: 'AuctionBid created successfully',
-// 			auctionBid
-// 		});
-// 	} catch (error) {
-// 		console.error(error);
-// 		res.status(500).json({ msg: 'Failed to add an auction bid' });
-// 	}
-// };
+		res.status(201).json({
+			message: 'AuctionBid created successfully',
+			auctionBid
+		});
+	} catch (error) {
+		console.error(error);
+		res.status(500).json({ msg: 'Failed to add an auction bid' });
+	}
+};
 
 // const winnerAuction = async(req, res) => {
 // 	try {
