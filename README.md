@@ -1,4 +1,6 @@
 # TODO
+I have `amount` column in order and payment.
+
 Fix: users and admin's logic.
 Need to add 10 entities to every table
 

@@ -222,14 +222,57 @@ const addAuctionBid = async (req, res) => {
 	}
 };
 
-// const winnerAuction = async(req, res) => {
-// 	try {
+const checkWinnerAuction = async(req, res) => {
+	try {
+		const flashAuctionId = parseInt(req.params.id);
+		if (isNaN(flashAuctionId)) {
+			return res.status(400).json({ msg: 'Invalid type of id' });
+		}
 
-// 	} catch (error) {
-// 		console.error(error);
-// 		res.status(500).json({ msg: '' });
-// 	}
-// };
+		const now = new Date();
+
+		const flashAuction = await prisma.flashAuction.findUnique({
+			where: {
+				id: flashAuctionId,
+				bids: { some },
+				endTime: {
+					lte: now
+				}
+			},
+			include: {
+				bids: {
+					orderBy: {
+						amount: 'desc'
+					}
+				}
+			}
+		});
+		if (!flashAuction) {
+			return res.status(400).json({ msg: 'There is no such flash auction or it has no bids' });
+		}
+
+		const bidder = flashAuction.bids[0];
+
+		const order = await prisma.order.create({
+			data: {
+				customerId: bidder.bidderId,
+				foodItemId: flashAuction.foodItemId,
+				auctionBidId: bidder.auctionId,
+				amount: bidder.amount,
+				quantity: bidder.amount || 1
+			}
+		});
+
+		res.json({
+			message: `The winner is selected successfully`,
+			bidder,
+			order
+		})
+	} catch (error) {
+		console.error(error);
+		res.status(500).json({ msg: 'Failed determine winner' });
+	}
+};
 
 module.exports = {
 	getInventories,
@@ -239,7 +282,8 @@ module.exports = {
 	deleteInventory,
 	addAuctionFlash,
 	deleteAuctionFlash,
-	addAuctionBid
+	addAuctionBid,
+	checkWinnerAuction
 }
 
 
